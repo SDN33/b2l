@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 import {
   FileText,
   Calendar,
@@ -80,25 +81,30 @@ export default function Dashboard() {
   const Sidebar = () => (
     <div className="flex flex-col w-64 bg-background border-r h-screen p-4">
       <div className="space-y-4">
-        <div className="px-3 py-2">
+          <Image
+            src="/images/logo.png"
+            alt="Logo"
+            width={200}
+            height={200}
+            className="mb-6 mx-auto"
+          />
           <h2 className="mb-2 px-4 text-lg font-semibold">Menu</h2>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {menuItems.map((item) => (
-              <button
+                <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
                 className={cn(
-                  "flex items-center w-full rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  activeSection === item.id ? "bg-accent text-accent-foreground" : "transparent"
+                  "flex items-center w-full rounded-lg px-3 py-2 text-sm font-medium",
+                  activeSection === item.id ? "bg-red-700 text-white" : "transparent"
                 )}
-              >
+                >
                 <item.icon className="h-4 w-4 mr-2" />
                 {item.title}
-              </button>
+                </button>
             ))}
           </div>
         </div>
-      </div>
     </div>
   )
 
