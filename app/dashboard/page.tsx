@@ -25,6 +25,7 @@ const PlaceholderComponent = ({ title }: { title: string }) => (
 
 export default function Dashboard() {
   const [email, setEmail] = useState<string | null>(null)
+  const [session, setSession] = useState<any>(null)
   const [activeSection, setActiveSection] = useState('notes')
   const supabase = createClient()
 
@@ -69,14 +70,15 @@ export default function Dashboard() {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
           setEmail(session.user.email ?? null)
+          setSession(session)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user:', error)
       }
     }
 
     getUser()
-  }, [])
+  }, [supabase.auth])
 
   const Sidebar = () => (
     <div className="flex flex-col w-64 bg-background border-r h-screen p-4">
@@ -84,8 +86,8 @@ export default function Dashboard() {
           <Image
             src="/images/logo.png"
             alt="Logo"
-            width={100}
-            height={100}
+            width={200}
+            height={200}
             className="mb-6 mx-auto"
           />
           <h2 className="mb-2 px-4 text-lg font-semibold">Menu</h2>
@@ -117,12 +119,36 @@ export default function Dashboard() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="p-8 space-y-8">
+        <div className="p-2 space-y-4">
           <header className="space-y-2">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
-                {email && <p className="text-muted-foreground">Connecté en tant que {email}</p>}
+                <h1 className="text-xl font-bold tracking-tight">Tableau de bord</h1>
+                {email && (
+                  <div className="text-muted-foreground">
+                  {session?.user?.user_metadata?.display_name ? (
+                    <p>Bienvenue {session.user.user_metadata.display_name}</p>
+                  ) : (
+                    <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                      const displayName = prompt("Entrez votre nom d'affichage:");
+                      if (displayName) {
+                        await supabase.auth.updateUser({
+                        data: { display_name: displayName }
+                        });
+                        window.location.reload();
+                      }
+                      }}
+                    >
+                      Définir un nom d&apos;affichage
+                    </Button>
+                    </div>
+                  )}
+                  </div>
+                )}
               </div>
               <Button
                 variant="outline"

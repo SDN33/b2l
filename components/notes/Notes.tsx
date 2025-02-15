@@ -160,12 +160,6 @@ const NotesComponent = () => {
             </CardContent>
           </Card>
           <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Nouvelle Note
-              </CardTitle>
-            </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <Textarea
@@ -174,7 +168,7 @@ const NotesComponent = () => {
                   value={currentNote}
                   onChange={(e) => setCurrentNote(e.target.value)}
                 />
-                <Button onClick={handleSaveNote} className="w-full">
+                <Button onClick={handleSaveNote} className="w-fit">
                   <Plus className="w-4 h-4 mr-2" />
                   Sauvegarder
                 </Button>
