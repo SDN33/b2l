@@ -84,8 +84,8 @@ export default function Dashboard() {
           <Image
             src="/images/logo.png"
             alt="Logo"
-            width={200}
-            height={200}
+            width={100}
+            height={100}
             className="mb-6 mx-auto"
           />
           <h2 className="mb-2 px-4 text-lg font-semibold">Menu</h2>
@@ -121,14 +121,14 @@ export default function Dashboard() {
           <header className="space-y-2">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
                 {email && <p className="text-muted-foreground">Connecté en tant que {email}</p>}
               </div>
               <Button
                 variant="outline"
                 onClick={async () => {
                   await supabase.auth.signOut()
-                  window.location.href = '/login'
+                  window.location.href = '/auth/login'
                 }}
               >
                 Déconnexion

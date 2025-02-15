@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,12 +15,22 @@ const NotesComponent = () => {
   const [notes, setNotes] = useState<Array<{ id: string, content: string, created_at: string }>>([])
   const [archivedNotes, setArchivedNotes] = useState<Array<{ id: string, content: string, created_at: string }>>([])
   const [deleteSuccess, setDeleteSuccess] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  const formatDate = (dateString: string) => {
+    if (typeof window === 'undefined') return ''
+    return new Date(dateString).toLocaleDateString('fr-FR')
+  }
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const supabase = createClient()
 
   const handleSaveNote = async () => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('notes')
         .insert([
           { content: currentNote, archived: false }
@@ -33,7 +43,7 @@ const NotesComponent = () => {
     }
   }
 
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     try {
       // Fetch active notes
       const { data: activeData, error: activeError } = await supabase
@@ -57,7 +67,7 @@ const NotesComponent = () => {
     } catch (error) {
       console.error('Error fetching notes:', error)
     }
-  }
+  }, [supabase])
 
   const handleArchiveNote = async (noteId: string) => {
     try {
@@ -105,7 +115,7 @@ const NotesComponent = () => {
 
   useEffect(() => {
     fetchNotes()
-  }, [])
+  }, [fetchNotes])
 
   return (
     <Tabs defaultValue="notes" className="w-full">
@@ -117,7 +127,38 @@ const NotesComponent = () => {
 
       {/* Notes actives */}
       <TabsContent value="notes">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Folder className="w-5 h-5" />
+                Notes Récentes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {notes.map((note) => (
+                  <Card key={note.id} className="p-4">
+                    <p className="text-sm text-muted-foreground mb-2" suppressHydrationWarning>
+                      {formatDate(note.created_at)}
+                    </p>
+                    <div className="space-y-2">
+                      <p>{note.content}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleArchiveNote(note.id)}
+                        className='bg-black text-white'
+                      >
+                        <Archive className="w-4 h-4 mr-2" />
+                        Archiver
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -137,37 +178,6 @@ const NotesComponent = () => {
                   <Plus className="w-4 h-4 mr-2" />
                   Sauvegarder
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Folder className="w-5 h-5" />
-                Notes Récentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {notes.map((note) => (
-                  <Card key={note.id} className="p-4">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {new Date(note.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                    <div className="space-y-2">
-                      <p>{note.content}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleArchiveNote(note.id)}
-                      >
-                        <Archive className="w-4 h-4 mr-2" />
-                        Archiver
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
               </div>
             </CardContent>
           </Card>
@@ -195,7 +205,7 @@ const NotesComponent = () => {
               <TableBody>
                 {archivedNotes.map((note) => (
                   <TableRow key={note.id}>
-                    <TableCell>{new Date(note.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                    <TableCell suppressHydrationWarning>{new Date(note.created_at).toLocaleDateString('fr-FR')}</TableCell>
                     <TableCell>{note.content}</TableCell>
                     <TableCell>
                       <Button
