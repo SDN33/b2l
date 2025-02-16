@@ -212,7 +212,7 @@ const Employees = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Liste des employés</CardTitle>
           <Button
-            className="bg-green-700 hover:bg-green-800"
+            className="bg-black hover:bg-gray-100 hover:text-black"
             onClick={() => setIsDialogOpen(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
