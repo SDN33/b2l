@@ -13,6 +13,7 @@ import {
   Settings
 } from 'lucide-react'
 import NotesComponent  from '../../components/notes/Notes'
+import Employees from '../../components/employees/Employees'
 import { cn } from '@/lib/utils'
 
 // Composant temporaire pour les sections en développement
@@ -54,7 +55,9 @@ export default function Dashboard() {
       id: 'employees',
       title: 'Employés',
       icon: Users,
-      component: () => <PlaceholderComponent title="Employés" />
+      component: () => {
+        return Employees()
+      }
     },
     {
       id: 'settings',

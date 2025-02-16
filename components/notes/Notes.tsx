@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -9,13 +9,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileText, Plus, Folder, Archive, Settings, Trash2, RotateCcw } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
+import type { Database } from '@/types/database'
+
+type Note = Database['public']['Tables']['notes']['Row']
+type Employee = Database['public']['Tables']['employee']['Row']
 
 const NotesComponent = () => {
   const [currentNote, setCurrentNote] = useState('')
-  const [notes, setNotes] = useState<Array<{ id: string, content: string, created_at: string }>>([])
-  const [archivedNotes, setArchivedNotes] = useState<Array<{ id: string, content: string, created_at: string }>>([])
+  const [notes, setNotes] = useState<Note[]>([])
+  const [archivedNotes, setArchivedNotes] = useState<Note[]>([])
   const [deleteSuccess, setDeleteSuccess] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showEmployees, setShowEmployees] = useState(false)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [cursorPosition, setCursorPosition] = useState({ top: 0, left: 0 })
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const formatDate = (dateString: string) => {
     if (typeof window === 'undefined') return ''
@@ -113,6 +121,81 @@ const NotesComponent = () => {
     }
   }
 
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employee')
+        .select('id, name, created_at')
+        .order('name')
+      
+      if (error) {
+        console.error('Supabase error:', error)
+        return
+      }
+      
+      if (data) {
+        setEmployees(data)
+      } else {
+        console.warn('No employee data received')
+        setEmployees([])
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+      setEmployees([])
+    }
+  }
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    setCurrentNote(value)
+
+    // Vérifier si le dernier caractère est @
+    if (value.endsWith('@')) {
+      const textarea = textareaRef.current
+      if (textarea) {
+        const { selectionStart } = textarea
+        const textBeforeCursor = value.substring(0, selectionStart)
+        const lines = textBeforeCursor.split('\n')
+        const currentLineNumber = lines.length - 1
+        const lineHeight = 24 // hauteur d'une ligne en pixels
+        const charWidth = 8 // largeur moyenne d'un caractère en pixels
+
+        const rect = textarea.getBoundingClientRect()
+        const currentLineLength = lines[currentLineNumber].length
+
+        const top = rect.top + (currentLineNumber * lineHeight) - textarea.scrollTop + 30
+        const left = rect.left + (currentLineLength * charWidth)
+
+        setCursorPosition({ top, left })
+        setShowEmployees(true)
+        fetchEmployees()
+      }
+    } else if (!value.includes('@')) {
+      setShowEmployees(false)
+    }
+  }
+
+  // Ajouter un gestionnaire de clic en dehors pour fermer le popup
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showEmployees && textareaRef.current && !textareaRef.current.contains(event.target as Node)) {
+        setShowEmployees(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmployees])
+
+  const handleSelectEmployee = (employeeName: string) => {
+    const lastAtIndex = currentNote.lastIndexOf('@')
+    const newNote = currentNote.substring(0, lastAtIndex) + employeeName + ' '
+    setCurrentNote(newNote)
+    setShowEmployees(false)
+  }
+
   useEffect(() => {
     fetchNotes()
   }, [fetchNotes])
@@ -162,15 +245,41 @@ const NotesComponent = () => {
           <Card className="lg:col-span-1">
             <CardContent>
               <div className="space-y-4">
-                <Textarea
-                  placeholder="Écrivez votre note ici..."
-                  className="min-h-[200px]"
-                  value={currentNote}
-                  onChange={(e) => setCurrentNote(e.target.value)}
-                />
-                <Button onClick={handleSaveNote} className="w-fit">
+                <div className="relative">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder="Écrivez votre note ici... (Utilisez @ pour mentionner un employé)"
+                    className="min-h-[200px]"
+                    value={currentNote}
+                    onChange={handleTextareaChange}
+                  />
+                  {showEmployees && (
+                    <div 
+                      className="absolute z-10 bg-white border rounded-md shadow-lg p-2 max-h-48 overflow-y-auto"
+                      style={{ 
+                        position: 'fixed',
+                        top: `${cursorPosition.top}px`,
+                        left: `${cursorPosition.left}px`,
+                        minWidth: '200px',
+                        border: '1px solid #ccc',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      {employees.map((employee) => (
+                        <div
+                          key={employee.id}
+                          className="cursor-pointer p-2 hover:bg-gray-100"
+                          onClick={() => handleSelectEmployee(employee.name)}
+                        >
+                          {employee.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Button onClick={handleSaveNote} className="w-fit bg-green-700 text-white hover:bg-green-800">
                   <Plus className="w-4 h-4 mr-2" />
-                  Sauvegarder
+                  Publier
                 </Button>
               </div>
             </CardContent>
@@ -261,3 +370,4 @@ const NotesComponent = () => {
 }
 
 export default NotesComponent
+
