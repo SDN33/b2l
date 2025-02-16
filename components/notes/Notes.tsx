@@ -231,7 +231,7 @@ const NotesComponent = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleArchiveNote(note.id)}
-                        className='bg-black text-white'
+                        className='bg-red-700 text-white hover:bg-red-800'
                       >
                         <Archive className="w-4 h-4 mr-2" />
                         Archiver
@@ -277,7 +277,11 @@ const NotesComponent = () => {
                     </div>
                   )}
                 </div>
-                <Button onClick={handleSaveNote} className="w-fit bg-green-700 text-white hover:bg-green-800">
+                <Button
+                  onClick={handleSaveNote}
+                  className="w-fit bg-black text-white hover:bg-gray-100 hover:text-black"
+                >
+
                   <Plus className="w-4 h-4 mr-2" />
                   Publier
                 </Button>
