@@ -127,12 +127,12 @@ const NotesComponent = () => {
         .from('employee')
         .select('id, name, created_at')
         .order('name')
-      
+
       if (error) {
         console.error('Supabase error:', error)
         return
       }
-      
+
       if (data) {
         setEmployees(data)
       } else {
@@ -231,7 +231,7 @@ const NotesComponent = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleArchiveNote(note.id)}
-                        className='bg-red-700 text-white hover:bg-red-800'
+                        className='bg-red-700 text-white hover:bg-red-800 hover:text-white'
                       >
                         <Archive className="w-4 h-4 mr-2" />
                         Archiver
@@ -254,9 +254,9 @@ const NotesComponent = () => {
                     onChange={handleTextareaChange}
                   />
                   {showEmployees && (
-                    <div 
+                    <div
                       className="absolute z-10 bg-white border rounded-md shadow-lg p-2 max-h-48 overflow-y-auto"
-                      style={{ 
+                      style={{
                         position: 'fixed',
                         top: `${cursorPosition.top}px`,
                         left: `${cursorPosition.left}px`,
@@ -360,6 +360,7 @@ const NotesComponent = () => {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteAllArchived}
+                  className='bg-red-700 text-white hover:bg-red-800 hover:text-white'
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Supprimer
@@ -374,4 +375,3 @@ const NotesComponent = () => {
 }
 
 export default NotesComponent
-
