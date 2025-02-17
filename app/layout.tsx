@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/toaster'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Gestion des Tâches',
+  title: 'The Place To Be | Gestion des tâches et comptage de caisse',
   description: 'Application de gestion des tâches et comptage de caisse',
 }
 

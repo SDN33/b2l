@@ -2,12 +2,12 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Employee, TaskTemplate, Shift, AssignedTask, CashReport } from '@/types/database'
 
-const supabase = createClient()
+const supabaseClient = createClient()
 
-export const api = {
+export const supabase = {
   // Employees
   async getEmployees() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('employees')
       .select('*')
       .order('full_name')
@@ -17,7 +17,7 @@ export const api = {
   },
 
   async createEmployee(employee: Omit<Employee, 'id' | 'created_at'>) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('employees')
       .insert(employee)
       .select()
@@ -29,7 +29,7 @@ export const api = {
 
   // Task Templates
   async getTaskTemplates() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('task_templates')
       .select('*')
       .order('category, name')
@@ -39,7 +39,7 @@ export const api = {
   },
 
   async updateTaskTemplate(id: string, template: Partial<TaskTemplate>) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('task_templates')
       .update({ ...template, updated_at: new Date().toISOString() })
       .eq('id', id)
@@ -52,7 +52,7 @@ export const api = {
 
   // Shifts
   async getShifts(startDate: Date, endDate: Date) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('shifts')
       .select(`
         *,
@@ -67,7 +67,7 @@ export const api = {
   },
 
   async createShift(shift: Omit<Shift, 'id' | 'created_at'>) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('shifts')
       .insert(shift)
       .select()
@@ -79,16 +79,16 @@ export const api = {
 
   // Reports
   async getShiftReport(shiftId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('shifts')
       .select(`
+      *,
+      employee:employees(full_name, email),
+      tasks:assigned_tasks(
         *,
-        employee:employees(full_name, email),
-        tasks:assigned_tasks(
-          *,
-          template:task_templates(*)
-        ),
-        cash_report:cash_reports(*)
+        template:task_templates(*)
+      ),
+      cash_report:cash_reports(*)
       `)
       .eq('id', shiftId)
       .single()
@@ -97,3 +97,5 @@ export const api = {
     return data
   }
 }
+
+export default supabase

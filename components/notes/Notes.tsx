@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { FileText, Plus, Folder, Archive, Settings, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, Folder, Archive, Settings, Trash2, RotateCcw } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import type { Database } from '@/types/database'
 
@@ -121,29 +121,25 @@ const NotesComponent = () => {
     }
   }
 
-  const fetchEmployees = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('employee')
-        .select('id, name, created_at')
-        .order('name')
+  const fetchEmployees = useCallback(async () => {
+      try {
+        const { data, error } = await supabase
+            .from('employees')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error:', error)
-        return
+        if (error) throw error;
+        setEmployees(data || []);
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        console.error('Failed to fetch employees');
+        alert('Error: Failed to fetch employees');
       }
+    }, [supabase]);
 
-      if (data) {
-        setEmployees(data)
-      } else {
-        console.warn('No employee data received')
-        setEmployees([])
-      }
-    } catch (error) {
-      console.error('Error fetching employees:', error)
-      setEmployees([])
-    }
-  }
+    useEffect(() => {
+      fetchEmployees();
+    }, [fetchEmployees]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
@@ -360,7 +356,6 @@ const NotesComponent = () => {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteAllArchived}
-                  className='bg-red-700 text-white hover:bg-red-800 hover:text-white'
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Supprimer

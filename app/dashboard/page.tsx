@@ -15,6 +15,7 @@ import {
 import NotesComponent  from '../../components/notes/Notes'
 import Employees from '../../components/employees/Employees'
 import { cn } from '@/lib/utils'
+import TasksManagement from '@/components/tasks/Tasks'
 
 // Composant temporaire pour les sections en développement
 const PlaceholderComponent = ({ title }: { title: string }) => (
@@ -49,7 +50,7 @@ export default function Dashboard() {
       id: 'tasks',
       title: 'Gestion des tâches',
       icon: ClipboardList,
-      component: () => <PlaceholderComponent title="Gestion des tâches" />
+      component: () => <TasksManagement />
     },
     {
       id: 'employees',

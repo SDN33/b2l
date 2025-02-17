@@ -158,7 +158,7 @@ const Employees = () => {
         } else {
             // Création
             console.log('Données à insérer:', employeeData);
-            
+
             const { data, error } = await supabase
                 .from('employees')
                 .insert([employeeData])
@@ -200,10 +200,28 @@ const Employees = () => {
       'bg-green-500',
       'bg-yellow-500',
       'bg-red-500',
-      'bg-pink-500'
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-cyan-500',
+      'bg-teal-500',
+      'bg-orange-500',
+      'bg-violet-500',
+      'bg-rose-500',
+      'bg-emerald-500',
+      'bg-amber-500',
+      'bg-lime-500'
     ];
-    const index = str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
+
+    // Create a deterministic hash from the string
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    // Use absolute value of hash to get a positive index
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   return (
