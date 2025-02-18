@@ -227,7 +227,7 @@ const NotesComponent = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleArchiveNote(note.id)}
-                        className='bg-red-700 text-white hover:bg-red-800 hover:text-white'
+                        className='bg-black text-white hover:bg-red-800 hover:text-white'
                       >
                         <Archive className="w-4 h-4 mr-2" />
                         Archiver
