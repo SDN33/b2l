@@ -178,7 +178,7 @@ const DailyTaskManagement = ({ employees, supabase }: DailyTaskManagementProps) 
                 )}
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{template.name}</h3>
+                  <h3 className="font-medium text-sm truncate">{template.name}</h3>
                   {template.description && (
                     <p className="text-sm text-gray-500 truncate">{template.description}</p>
                   )}
