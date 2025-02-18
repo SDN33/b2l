@@ -53,6 +53,25 @@ const Employees = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState<EmployeeFormData>(initialFormData);
+  const [employeeColors, setEmployeeColors] = useState<Map<string, string>>(new Map());
+
+  const DISTINCT_COLORS = React.useMemo(() => [
+    'bg-red-500',      // Rouge vif
+    'bg-blue-600',     // Bleu royal
+    'bg-emerald-500',  // Vert émeraude
+    'bg-amber-500',    // Orange/Ambre
+    'bg-purple-600',   // Violet
+    'bg-cyan-500',     // Cyan
+    'bg-pink-500',     // Rose
+    'bg-indigo-600',   // Indigo
+    'bg-yellow-500',   // Jaune
+    'bg-teal-600',     // Bleu-vert
+  ] as const, []);
+
+  const getDistinctColor = React.useCallback((index: number): string => {
+    // Utilise le modulo pour s'assurer que l'index reste dans les limites du tableau
+    return DISTINCT_COLORS[index % DISTINCT_COLORS.length];
+  }, [DISTINCT_COLORS]);
 
   const fetchEmployees = async () => {
     try {
@@ -73,6 +92,14 @@ const Employees = () => {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    const newColorMap = new Map();
+    employees.forEach((employee, index) => {
+      newColorMap.set(employee.id, getDistinctColor(index));
+    });
+    setEmployeeColors(newColorMap);
+  }, [employees, getDistinctColor]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -175,54 +202,24 @@ const Employees = () => {
             }
 
             await fetchEmployees(); // Recharger la liste complète
+
             alert('Employé ajouté avec succès');
         }
-    } catch (error: any) {
-        console.error('Erreur complète:', error);
-        alert(`Erreur: ${error.message || 'Une erreur est survenue'}`);
+    } catch (error) {
+        console.error('Error saving employee:', error);
+        alert('Error: Failed to save employee');
     } finally {
         resetForm();
     }
+  };
+
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .map(word => word.charAt(0))
+    .join('')
+    .toUpperCase();
 };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
-  };
-
-  const getRandomColor = (str: string) => {
-    const colors = [
-      'bg-purple-500',
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-yellow-500',
-      'bg-red-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-cyan-500',
-      'bg-teal-500',
-      'bg-orange-500',
-      'bg-violet-500',
-      'bg-rose-500',
-      'bg-emerald-500',
-      'bg-amber-500',
-      'bg-lime-500'
-    ];
-
-    // Create a deterministic hash from the string
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    // Use absolute value of hash to get a positive index
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
 
   return (
     <>
@@ -246,9 +243,9 @@ const Employees = () => {
               >
                 <div className="flex items-center space-x-4">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getRandomColor(
-                      employee.full_name
-                    )}`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
+                      employeeColors.get(employee.id) || 'bg-gray-500'
+                    }`}
                   >
                     {getInitials(employee.full_name)}
                   </div>
