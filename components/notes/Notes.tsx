@@ -25,6 +25,7 @@ const NotesComponent = () => {
   const [cursorPosition, setCursorPosition] = useState({ top: 0, left: 0 })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+
   const formatDate = (dateString: string) => {
     if (typeof window === 'undefined') return ''
     return new Date(dateString).toLocaleDateString('fr-FR')
@@ -121,55 +122,63 @@ const NotesComponent = () => {
     }
   }
 
-  const fetchEmployees = useCallback(async () => {
-      try {
-        const { data, error } = await supabase
-            .from('employees')
-            .select('*')
-            .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setEmployees(data || []);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        console.error('Failed to fetch employees');
-        alert('Error: Failed to fetch employees');
+   const fetchEmployees = useCallback(async (searchTerm: string = '') => {
+    try {
+      let query = supabase.from('employees').select('*').order('created_at', { ascending: false });
+
+      if (searchTerm) {
+        query = query.ilike('full_name', `%${searchTerm}%`);
       }
-    }, [supabase]);
 
-    useEffect(() => {
-      fetchEmployees();
-    }, [fetchEmployees]);
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      console.error('Failed to fetch employees');
+      alert('Error: Failed to fetch employees');
+    }
+  }, [supabase]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-    setCurrentNote(value)
+    const value = e.target.value;
+    setCurrentNote(value);
+    const lastAtIndex = value.lastIndexOf('@');
 
-    // Vérifier si le dernier caractère est @
-    if (value.endsWith('@')) {
-      const textarea = textareaRef.current
-      if (textarea) {
-        const { selectionStart } = textarea
-        const textBeforeCursor = value.substring(0, selectionStart)
-        const lines = textBeforeCursor.split('\n')
-        const currentLineNumber = lines.length - 1
-        const lineHeight = 24 // hauteur d'une ligne en pixels
-        const charWidth = 8 // largeur moyenne d'un caractère en pixels
 
-        const rect = textarea.getBoundingClientRect()
-        const currentLineLength = lines[currentLineNumber].length
-
-        const top = rect.top + (currentLineNumber * lineHeight) - textarea.scrollTop + 30
-        const left = rect.left + (currentLineLength * charWidth)
-
-        setCursorPosition({ top, left })
-        setShowEmployees(true)
-        fetchEmployees()
-      }
-    } else if (!value.includes('@')) {
-      setShowEmployees(false)
+    if (value.includes('@')) {
+      const searchTerm = value.substring(lastAtIndex + 1);
+      setShowEmployees(true);
+      fetchEmployees(searchTerm);
+    } else {
+      setShowEmployees(false);
     }
-  }
+
+    calculateCursorPosition();
+
+  };
+
+  const calculateCursorPosition = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const { selectionStart } = textarea;
+      const textBeforeCursor = textarea.value.substring(0, selectionStart);
+      const lines = textBeforeCursor.split('\n');
+      const currentLineNumber = lines.length - 1;
+      const lineHeight = 24; // Adjust based on your CSS
+      const charWidth = 8;   // Adjust based on your CSS
+
+      const rect = textarea.getBoundingClientRect();
+      const currentLineLength = lines[currentLineNumber].length;
+
+      const top = rect.top + (currentLineNumber * lineHeight) - textarea.scrollTop + 30;
+      const left = rect.left + (currentLineLength * charWidth);
+
+      setCursorPosition({ top, left });
+    }
+  };
 
   // Ajouter un gestionnaire de clic en dehors pour fermer le popup
   useEffect(() => {
@@ -185,11 +194,28 @@ const NotesComponent = () => {
     }
   }, [showEmployees])
 
-  const handleSelectEmployee = (employeeName: string) => {
-    const lastAtIndex = currentNote.lastIndexOf('@')
-    const newNote = currentNote.substring(0, lastAtIndex) + employeeName + ' '
-    setCurrentNote(newNote)
-    setShowEmployees(false)
+  const handleSelectEmployee = (employeeFullName: string) => {
+    console.log("handleSelectEmployee appelé avec:", employeeFullName);
+    console.log("currentNote avant modification:", currentNote);
+
+    const lastAtIndex = currentNote.lastIndexOf('@');
+    const newNote = currentNote.substring(0, lastAtIndex) + `**${employeeFullName}** `;
+
+    setCurrentNote(prevNote => { // Utilisation d'une fonction de mise à jour
+      console.log("prevNote:", prevNote); // Log de l'état précédent
+      console.log("newNote dans setState:", newNote); // Log de la nouvelle note juste avant setState
+      return newNote; // Retourne la nouvelle valeur pour mettre à jour l'état
+    });
+
+    console.log("newNote après modification:", newNote);
+    console.log("currentNote après setState:", currentNote);
+
+
+    setShowEmployees(false);
+
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
   }
 
   useEffect(() => {
@@ -223,15 +249,15 @@ const NotesComponent = () => {
                     </p>
                     <div className="space-y-2">
                       <p>{note.content}</p>
-                      <Button
+                        <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleArchiveNote(note.id)}
-                        className='bg-black text-white hover:bg-red-800 hover:text-white'
-                      >
-                        <Archive className="w-4 h-4 mr-2" />
+                        className='bg-black text-white text-xs hover:bg-red-800 hover:text-white'
+                        >
+                        <Archive className="w-2 h-2 mr-2 text-xs" />
                         Archiver
-                      </Button>
+                        </Button>
                     </div>
                   </Card>
                 ))}
@@ -244,35 +270,40 @@ const NotesComponent = () => {
                 <div className="relative">
                   <Textarea
                     ref={textareaRef}
-                    placeholder="Écrivez votre note ici... (Utilisez @ pour mentionner un employé)"
+                    placeholder="Écrivez votre note ici... (Utilisez @ pour voir les noms de vos employés)"
                     className="min-h-[200px]"
                     value={currentNote}
-                    onChange={handleTextareaChange}
+                    onChange={(e) => handleTextareaChange(e as React.ChangeEvent<HTMLTextAreaElement>)}
+                    style={{ fontWeight: 'semibold', color: 'black' }} // Style par défaut du textarea en noir et gras
                   />
-                  {showEmployees && (
+                    {showEmployees && (
                     <div
-                      className="absolute z-10 bg-white border rounded-md shadow-lg p-2 max-h-48 overflow-y-auto"
+                      className="absolute z-10 bg-white text-black border rounded-md shadow-lg p-2 max-h-48 overflow-y-auto"
                       style={{
-                        position: 'fixed',
-                        top: `${cursorPosition.top}px`,
-                        left: `${cursorPosition.left}px`,
-                        minWidth: '200px',
-                        border: '1px solid #ccc',
-                        backgroundColor: 'white'
+                      position: 'fixed',
+                      top: `${cursorPosition.top}px`,
+                      left: `${cursorPosition.left}px`,
+                      minWidth: '200px',
+                      border: '1px solid #ccc',
+                      backgroundColor: 'white'
                       }}
                     >
-                      {employees.map((employee) => (
+                      {employees.length > 0 ? employees.map((employee) => (
                         <div
-                          key={employee.id}
-                          className="cursor-pointer p-2 hover:bg-gray-100"
-                          onClick={() => handleSelectEmployee(employee.name)}
+                          key={employee.id} // <-- Assure-toi d'avoir une key unique, ici 'employee.id'
+                          className="cursor-pointer p-2 hover:bg-gray-100 text-black"
+                          onClick={() => handleSelectEmployee(employee.full_name)}
                         >
-                          {employee.name}
+                          {employee.full_name}
                         </div>
-                      ))}
+                      )) : (
+                        <div className="p-2 text-gray-500">Aucun employé trouvé</div>
+                      )}
                     </div>
-                  )}
+                    )
+                  }
                 </div>
+
                 <Button
                   onClick={handleSaveNote}
                   className="w-fit bg-black text-white hover:bg-gray-100 hover:text-black"

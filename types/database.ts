@@ -12,7 +12,7 @@ export type Database = {
       employee: {
         Row: {
           id: string
-          name: string
+          full_name: string
           created_at: string
         }
       }
@@ -87,6 +87,7 @@ export interface AssignedTaskWithDetails {
   completed_at: string | null;
   notes: string | null;
   employee_id: string | null;
+  employee_full_name: string | null;
   created_at: string;
   template?: TaskTemplateWithDetails;
   employee?: Employee;
@@ -123,12 +124,13 @@ export interface AssignedTask {
   template_id: string;
   shift_id: string;
   employee_id: string | null;
+  employee_full_name: string | null;
   completed: boolean;
   completed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
-  template: TaskTemplate; 
+  template: TaskTemplate;
 
 }
 
