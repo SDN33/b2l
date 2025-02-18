@@ -1,215 +1,354 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Check, Edit, Trash2, X } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const TasksManagement = () => {
-  interface Task {
-    id: number;
-    name: string;
-    category: string;
-    assigned_to: string;
-    status: string;
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  {
+    auth: {
+      persistSession: true
+    }
+
   }
+);
 
+interface Employee {
+  id: UUID;
+  full_name: string;
+}
+
+// Définition plus stricte des types
+type UUID = string & { _brand: 'UUID' };
+
+interface Task {
+    id: UUID;
+    title: string;
+    description: string;
+    assigned_to: UUID | null;
+    due_date: string;
+    created_at: string;
+}
+
+interface TaskFormData {
+    title: string;
+    description: string;
+    assigned_to: UUID | null;
+    due_date: string;
+}
+
+const initialFormData: TaskFormData = {
+  title: '',
+  description: '',
+  assigned_to: null,
+  due_date: '',
+};
+
+const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
-  const [newTask, setNewTask] = useState({
-    name: '',
-    category: 'opening', // or 'closing'
-    description: '',
-    is_active: true
-  });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [formData, setFormData] = useState<TaskFormData>(initialFormData);
 
-  // Simulated data - replace with your Supabase queries
-  const categories = [
-    { value: 'opening', label: 'Ouverture' },
-    { value: 'closing', label: 'Fermeture' }
-  ];
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_templates') // Replace 'your_actual_table_name' with the correct table name
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const employees = [
-    { id: 1, name: 'Stéphane' },
-    { id: 2, name: 'Coralie' }
-  ];
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      alert('Error: Failed to fetch tasks');
+    }
+  };
 
-  const taskStatuses = [
-    { value: 'pending', label: 'En attente' },
-    { value: 'completed', label: 'Terminé' }
-  ];
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*');
 
-  const NewTaskDialog = () => (
-    <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Nouvelle tâche</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <label>Nom de la tâche</label>
-            <Input
-              value={newTask.name}
-              onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-              placeholder="Nom de la tâche"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label>Catégorie</label>
-            <Select
-              value={newTask.category}
-              onValueChange={(value) => setNewTask({ ...newTask, category: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <label>Description</label>
-            <Input
-              value={newTask.description}
-              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-              placeholder="Description de la tâche"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setShowNewTaskDialog(false)}>
-            Annuler
-          </Button>
-          <Button onClick={() => {
-            // Add task to database
-            setShowNewTaskDialog(false);
-          }}>
-            Créer
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      alert('Error: Failed to fetch employees');
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+    fetchEmployees();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, assigned_to: value as UUID }));
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, due_date: e.target.value }));
+  };
+
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setSelectedTask(null);
+    setIsDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+  };
+
+  const handleEdit = (task: Task) => {
+    setSelectedTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description,
+      assigned_to: task.assigned_to,
+      due_date: task.due_date,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (task: Task) => {
+    setSelectedTask(task);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedTask) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', selectedTask.id);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
+      alert('Tâche supprimée avec succès');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error: Failed to delete task');
+    } finally {
+      resetForm();
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation des données avant envoi
+    if (!formData.title || !formData.description || !formData.due_date) {
+        alert('Veuillez remplir tous les champs');
+        return;
+    }
+
+    const taskData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        assigned_to: formData.assigned_to,
+        due_date: formData.due_date
+    };
+
+    try {
+        if (selectedTask) {
+            // Mise à jour
+            const { error } = await supabase
+                .from('tasks')
+                .update(taskData)
+                .eq('id', selectedTask.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            await fetchTasks(); // Recharger la liste complète
+            alert('Tâche modifiée avec succès');
+        } else {
+            // Création
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([taskData])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            await fetchTasks(); // Recharger la liste complète
+            alert('Tâche ajoutée avec succès');
+        }
+    } catch (error: any) {
+        console.error('Erreur complète:', error);
+        alert(`Erreur: ${error.message || 'Une erreur est survenue'}`);
+    } finally {
+        resetForm();
+    }
+};
 
   return (
-    <div className="p-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle>Gestion des tâches</CardTitle>
-          <Button onClick={() => setShowNewTaskDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle tâche
+    <>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Liste des tâches</CardTitle>
+          <Button
+            className="bg-black hover:bg-gray-100 hover:text-black"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter une tâche
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tâche</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Assigné à</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.name}</TableCell>
-                    <TableCell>
-                      <Select defaultValue={task.category}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select defaultValue={task.assigned_to}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {employees.map((employee) => (
-                            <SelectItem key={employee.id} value={employee.id.toString()}>
-                              {employee.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select defaultValue={task.status}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {taskStatuses.map((status) => (
-                            <SelectItem key={status.value} value={status.value}>
-                              {status.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="space-y-2">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100"
+              >
+                <div>
+                  <div className="font-medium">{task.title}</div>
+                  <div className="text-sm text-gray-500">{task.description}</div>
+                  <div className="text-sm text-gray-500">{task.due_date}</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white bg-black hover:text-black"
+                    onClick={() => handleEdit(task)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white bg-red-700 hover:text-red-600"
+                    onClick={() => handleDelete(task)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
-      <NewTaskDialog />
-    </div>
+
+      {/* Add/Edit Task Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedTask ? 'Modifier une tâche' : 'Ajouter une tâche'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Titre</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assigned_to">Attribuer à</Label>
+                <Select
+                  value={formData.assigned_to || ''}
+                  onValueChange={(value) => handleSelectChange(value as UUID)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un employé" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Date limite</Label>
+                <Input
+                  id="due_date"
+                  name="due_date"
+                  type="date"
+                  value={formData.due_date}
+                  onChange={handleDateChange}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={resetForm}>
+                Annuler
+              </Button>
+              <Button className="bg-black text-white hover:bg-gray-100 hover:text-black">
+                {selectedTask ? 'Modifier' : 'Ajouter'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+          </DialogHeader>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={resetForm}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-red-700 text-white hover:bg-red-600"
+              onClick={confirmDelete}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
-export default TasksManagement;
+export default Tasks;
