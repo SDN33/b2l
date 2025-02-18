@@ -6,6 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { CalendarIcon, CheckCircle, Circle } from 'lucide-react';
+import { Sun, Moon, Workflow, Loader2 } from 'lucide-react';
+import { fr } from 'date-fns/locale';
+import { cn } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -148,63 +151,77 @@ const DailyTaskManagement = ({ employees, supabase }: DailyTaskManagementProps) 
     }
   };
 
-  const renderTaskList = (tasks: TaskTemplateWithDetails[], shiftType: string) => (
+  const renderTaskList = (tasks: TaskTemplateWithDetails[], category: string) => (
     <Card className="mt-4">
-      <CardHeader>
-        <CardTitle className="capitalize">{shiftType} Tasks</CardTitle>
+      <CardHeader className="py-3">
+        <CardTitle className="text-lg font-semibold capitalize flex items-center gap-2">
+          {category === 'opening' && <Sun className="h-4 w-4" />}
+          {category === 'closing' && <Moon className="h-4 w-4" />}
+          {category === 'custom' && <Workflow className="h-4 w-4" />}
+          {category === 'opening' ? 'Ouverture' : category === 'closing' ? 'Fermeture' : 'Tâches personnalisées'}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {tasks.map(template => {
-            const isAssigned = assignedTasks.some(
+            const assignedTask = assignedTasks.find(
               task => task.template_id === template.id
             );
 
             return (
-              <div key={template.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <h3 className="font-medium">{template.name}</h3>
-                  <p className="text-sm text-gray-500">{template.description}</p>
-                  <p className="text-sm text-gray-600">Category: {template.category}</p>
-                </div>
-                {!isAssigned ? (
-                  <Select
-                    onValueChange={(employeeId) => handleAssignTask(template.id, employeeId)}
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Assign to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map(employee => (
-                        <SelectItem key={employee.id} value={employee.id}>
-                          {employee.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-600">
-                      Assigned to: {
-                        assignedTasks.find(task => task.template_id === template.id)?.employee?.full_name
-                      }
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const task = assignedTasks.find(t => t.template_id === template.id);
-                        if (task) handleCompleteTask(task.id);
-                      }}
-                    >
-                      {assignedTasks.find(task => task.template_id === template.id)?.completed ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <Circle className="h-5 w-5" />
-                      )}
-                    </Button>
-                  </div>
+              <div
+                key={template.id}
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg border",
+                  assignedTask?.completed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200",
+                  "hover:shadow-sm transition-shadow"
                 )}
+              >
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium truncate">{template.name}</h3>
+                  {template.description && (
+                    <p className="text-sm text-gray-500 truncate">{template.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                  {assignedTask ? (
+                    <>
+                      <span className="text-sm text-gray-600 truncate max-w-[100px]">
+                        {assignedTask.employee?.full_name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCompleteTask(assignedTask.id)}
+                        className={cn(
+                          "hover:bg-transparent p-1",
+                          assignedTask.completed && "text-green-500"
+                        )}
+                      >
+                        {assignedTask.completed ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <Circle className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <Select
+                      onValueChange={(employeeId) => handleAssignTask(template.id, employeeId)}
+                    >
+                      <SelectTrigger className="w-[130px] h-8">
+                        <SelectValue placeholder="Assigner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map(employee => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            {employee.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -215,13 +232,19 @@ const DailyTaskManagement = ({ employees, supabase }: DailyTaskManagementProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Daily Tasks</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Tâches à effectuer</h1>
+          <p className="text-sm text-gray-500">
+            {format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr })}
+          </p>
+        </div>
+
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[240px] pl-3 text-left font-normal">
+            <Button variant="outline" className="w-[200px] pl-3 text-left">
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(selectedDate, 'PPP')}
+                {format(selectedDate, 'PPP', { locale: fr })}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
@@ -230,19 +253,27 @@ const DailyTaskManagement = ({ employees, supabase }: DailyTaskManagementProps) 
               selected={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
               initialFocus
+              locale={fr}
             />
           </PopoverContent>
         </Popover>
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading tasks...</div>
+        <div className="text-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+          <p className="text-sm text-gray-500 mt-2">Chargement des tâches...</p>
+        </div>
       ) : (
-        <>
-          {Object.entries(groupedTemplates).map(([shiftType, tasks]) =>
-            renderTaskList(tasks, shiftType)
-          )}
-        </>
+        <div className="space-y-6">
+          {['opening', 'closing', 'custom'].map(category => {
+            const categoryTasks = taskTemplates.filter(t => t.category === category);
+            if (categoryTasks.length === 0) return null;
+            return <React.Fragment key={category}>
+              {renderTaskList(categoryTasks, category)}
+            </React.Fragment>;
+          })}
+        </div>
       )}
     </div>
   );
