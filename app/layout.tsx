@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'The Place To Be | Gestion des tâches et comptage de caisse',
   description: 'Application de gestion des tâches et comptage de caisse',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -22,5 +25,4 @@ export default function RootLayout({
         <Toaster />
       </body>
     </html>
-  )
-}
+  )}

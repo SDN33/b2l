@@ -1,354 +1,251 @@
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    auth: {
-      persistSession: true
-    }
-
-  }
-);
+import { format } from 'date-fns';
+import { CalendarIcon, CheckCircle, Circle } from 'lucide-react';
 
 interface Employee {
-  id: UUID;
+  id: string;
   full_name: string;
 }
 
-// Définition plus stricte des types
-type UUID = string & { _brand: 'UUID' };
-
-interface Task {
-    id: UUID;
-    title: string;
-    description: string;
-    assigned_to: UUID | null;
-    due_date: string;
-    created_at: string;
+interface TaskTemplateWithDetails {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  shift_type: string;
+  is_active: boolean;
 }
 
-interface TaskFormData {
-    title: string;
-    description: string;
-    assigned_to: UUID | null;
-    due_date: string;
+interface AssignedTaskWithDetails {
+  id: string;
+  template_id: string;
+  employee_id: string;
+  date: string;
+  completed: boolean;
+  completed_at?: string;
+  template: TaskTemplateWithDetails;
+  employee: Employee;
 }
 
-const initialFormData: TaskFormData = {
-  title: '',
-  description: '',
-  assigned_to: null,
-  due_date: '',
-};
+import { SupabaseClient } from '@supabase/supabase-js';
 
-const Tasks = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [formData, setFormData] = useState<TaskFormData>(initialFormData);
+interface DailyTaskManagementProps {
+  employees: Employee[];
+  supabase: SupabaseClient;
+}
 
-  const fetchTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('task_templates') // Replace 'your_actual_table_name' with the correct table name
-        .select('*')
-        .order('created_at', { ascending: false });
+const DailyTaskManagement = ({ employees, supabase }: DailyTaskManagementProps) => {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplateWithDetails[]>([]);
+  const [assignedTasks, setAssignedTasks] = useState<AssignedTaskWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
 
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      alert('Error: Failed to fetch tasks');
-    }
-  };
-
-  const fetchEmployees = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*');
-
-      if (error) throw error;
-      setEmployees(data || []);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-      alert('Error: Failed to fetch employees');
-    }
-  };
-
+  // Fetch task templates and assigned tasks for the selected date
   useEffect(() => {
-    fetchTasks();
-    fetchEmployees();
-  }, []);
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        // Fetch task templates
+        const { data: templates, error: templatesError } = await supabase
+          .from('task_templates')
+          .select('*')
+          .eq('is_active', true);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+        if (templatesError) throw templatesError;
 
-  const handleSelectChange = (value: string) => {
-    setFormData(prev => ({ ...prev, assigned_to: value as UUID }));
-  };
+        // Fetch assigned tasks for the selected date
+        const { data: assigned, error: assignedError } = await supabase
+        .from('assigned_tasks')
+        .select(`
+          *,
+          template:task_templates(*),
+          employee:employees(*),
+          shift:shifts!inner(date)
+        `)
+        .eq('shift.date', format(selectedDate, 'yyyy-MM-dd'));
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, due_date: e.target.value }));
-  };
-
-  const resetForm = () => {
-    setFormData(initialFormData);
-    setSelectedTask(null);
-    setIsDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-  };
-
-  const handleEdit = (task: Task) => {
-    setSelectedTask(task);
-    setFormData({
-      title: task.title,
-      description: task.description,
-      assigned_to: task.assigned_to,
-      due_date: task.due_date,
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (task: Task) => {
-    setSelectedTask(task);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedTask) return;
-
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', selectedTask.id);
-
-      if (error) throw error;
-
-      setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
-      alert('Tâche supprimée avec succès');
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error: Failed to delete task');
-    } finally {
-      resetForm();
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation des données avant envoi
-    if (!formData.title || !formData.description || !formData.due_date) {
-        alert('Veuillez remplir tous les champs');
-        return;
-    }
-
-    const taskData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        assigned_to: formData.assigned_to,
-        due_date: formData.due_date
+        setTaskTemplates(templates || []);
+        setAssignedTasks(assigned || []);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+      setLoading(false);
     };
 
-    try {
-        if (selectedTask) {
-            // Mise à jour
-            const { error } = await supabase
-                .from('tasks')
-                .update(taskData)
-                .eq('id', selectedTask.id)
-                .select()
-                .single();
+    fetchTasks();
+  }, [selectedDate, supabase]);
 
-            if (error) throw error;
-
-            await fetchTasks(); // Recharger la liste complète
-            alert('Tâche modifiée avec succès');
-        } else {
-            // Création
-            const { data, error } = await supabase
-                .from('tasks')
-                .insert([taskData])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            await fetchTasks(); // Recharger la liste complète
-            alert('Tâche ajoutée avec succès');
-        }
-    } catch (error: any) {
-        console.error('Erreur complète:', error);
-        alert(`Erreur: ${error.message || 'Une erreur est survenue'}`);
-    } finally {
-        resetForm();
+  // Group templates by shift type
+  const groupedTemplates = taskTemplates.reduce((acc, template) => {
+    if (!acc[template.shift_type]) {
+      acc[template.shift_type] = [];
     }
-};
+    acc[template.shift_type].push(template);
+    return acc;
+  }, {} as Record<string, TaskTemplateWithDetails[]>);
+
+  // Assign task to employee
+  const handleAssignTask = async (templateId: string, employeeId: string) => {
+    try {
+      // First get or create the shift for the selected date
+      const { data: shift, error: shiftError } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('date', format(selectedDate, 'yyyy-MM-dd'))
+        .single();
+
+      if (shiftError) throw shiftError;
+
+      // Then create the assigned task with the shift_id
+      const { data, error } = await supabase
+        .from('assigned_tasks')
+        .insert({
+          template_id: templateId,
+          employee_id: employeeId,
+          shift_id: shift.id,
+          completed: false
+        })
+        .select(`
+          *,
+          template:task_templates(*),
+          employee:employees(*)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      setAssignedTasks([...assignedTasks, data]);
+    } catch (error) {
+      console.error('Error assigning task:', error);
+    }
+  };
+
+  // Mark task as completed
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('assigned_tasks')
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setAssignedTasks(assignedTasks.map(task =>
+        task.id === taskId ? { ...task, ...data } : task
+      ));
+    } catch (error) {
+      console.error('Error completing task:', error);
+    }
+  };
+
+  const renderTaskList = (tasks: TaskTemplateWithDetails[], shiftType: string) => (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="capitalize">{shiftType} Tasks</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {tasks.map(template => {
+            const isAssigned = assignedTasks.some(
+              task => task.template_id === template.id
+            );
+
+            return (
+              <div key={template.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <h3 className="font-medium">{template.name}</h3>
+                  <p className="text-sm text-gray-500">{template.description}</p>
+                  <p className="text-sm text-gray-600">Category: {template.category}</p>
+                </div>
+                {!isAssigned ? (
+                  <Select
+                    onValueChange={(employeeId) => handleAssignTask(template.id, employeeId)}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map(employee => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-600">
+                      Assigned to: {
+                        assignedTasks.find(task => task.template_id === template.id)?.employee?.full_name
+                      }
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const task = assignedTasks.find(t => t.template_id === template.id);
+                        if (task) handleCompleteTask(task.id);
+                      }}
+                    >
+                      {assignedTasks.find(task => task.template_id === template.id)?.completed ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Circle className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <>
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Liste des tâches</CardTitle>
-          <Button
-            className="bg-black hover:bg-gray-100 hover:text-black"
-            onClick={() => setIsDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter une tâche
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100"
-              >
-                <div>
-                  <div className="font-medium">{task.title}</div>
-                  <div className="text-sm text-gray-500">{task.description}</div>
-                  <div className="text-sm text-gray-500">{task.due_date}</div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white bg-black hover:text-black"
-                    onClick={() => handleEdit(task)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white bg-red-700 hover:text-red-600"
-                    onClick={() => handleDelete(task)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Add/Edit Task Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedTask ? 'Modifier une tâche' : 'Ajouter une tâche'}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Titre</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="assigned_to">Attribuer à</Label>
-                <Select
-                  value={formData.assigned_to || ''}
-                  onValueChange={(value) => handleSelectChange(value as UUID)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un employé" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="due_date">Date limite</Label>
-                <Input
-                  id="due_date"
-                  name="due_date"
-                  type="date"
-                  value={formData.due_date}
-                  onChange={handleDateChange}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter className="mt-6">
-              <Button variant="outline" onClick={resetForm}>
-                Annuler
-              </Button>
-              <Button className="bg-black text-white hover:bg-gray-100 hover:text-black">
-                {selectedTask ? 'Modifier' : 'Ajouter'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmer la suppression</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={resetForm}>
-              Annuler
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Daily Tasks</h1>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[240px] pl-3 text-left font-normal">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {format(selectedDate, 'PPP')}
             </Button>
-            <Button
-              className="bg-red-700 text-white hover:bg-red-600"
-              onClick={confirmDelete}
-            >
-              Supprimer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8">Loading tasks...</div>
+      ) : (
+        <>
+          {Object.entries(groupedTemplates).map(([shiftType, tasks]) =>
+            renderTaskList(tasks, shiftType)
+          )}
+        </>
+      )}
+    </div>
   );
 };
 
-export default Tasks;
+export default DailyTaskManagement;

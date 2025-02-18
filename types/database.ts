@@ -31,6 +31,18 @@ export type Database = {
           category: string
           updated_at: string
           created_at: string
+          shift_type: 'opening' | 'closing';
+          is_active: boolean
+          description: string
+        }
+      }
+      tasks: {
+        Row: {
+          id: string
+          name: string
+          category: string
+          updated_at: string
+          created_at: string
         }
       }
       shifts: {
@@ -104,16 +116,9 @@ export interface ShiftWithDetails {
   employee?: Employee;
 }
 
-export interface ShiftWithType {
-  id: string;
-  date: string;
-  employee_id: string | null;
-  shift_type: 'opening' | 'closing';
-  status: 'planned' | 'in_progress' | 'completed';
-  created_at: string;
-}
 
-export type CreateShiftParams = Omit<ShiftWithType, 'id' | 'created_at'>;
+
+export type CreateShiftParams = Omit<Shift, 'id' | 'created_at'>;
 
 export type Task = Database['public']['Tables']['task_templates']['Row']
 

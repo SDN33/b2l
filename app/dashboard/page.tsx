@@ -50,7 +50,7 @@ export default function Dashboard() {
       id: 'tasks',
       title: 'Gestion des tâches',
       icon: ClipboardList,
-      component: () => <TasksManagement />
+      component: () => <TasksManagement employees={[]} supabase={supabase} />
     },
     {
       id: 'employees',
